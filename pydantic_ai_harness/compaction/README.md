@@ -386,6 +386,11 @@ releases; set `incremental=False` to retain the prior regeneration behavior. `pr
 when it falls outside the window. Pass `keep_tokens` to trim the retained tail to a token budget instead
 of `keep_messages`.
 
+Both prompt surfaces of the summary request are fields: `summary_prompt` is the user-turn template (it
+must contain a `{messages}` placeholder) and `instructions` is the summarizer agent's system prompt.
+Override `instructions` when the summarizer endpoint constrains the system prompt, e.g. Claude Code
+OAuth endpoints require requests to open with a fixed instruction string.
+
 ## Usage accounting
 
 The summary call is a real request to the model, so its full usage -- tokens **and** the request
