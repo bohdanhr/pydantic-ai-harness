@@ -387,9 +387,9 @@ when it falls outside the window. Pass `keep_tokens` to trim the retained tail t
 of `keep_messages`.
 
 Both prompt surfaces of the summary request are fields: `summary_prompt` is the user-turn template (it
-must contain a `{messages}` placeholder) and `instructions` is the summarizer agent's system prompt.
-Override `instructions` when the summarizer endpoint constrains the system prompt, e.g. Claude Code
-OAuth endpoints require requests to open with a fixed instruction string.
+must contain a `{messages}` placeholder), and `instructions` sets the internal agent's static instructions,
+which Pydantic AI sends in the request's system prompt. Override `instructions` when the summarizer
+endpoint requires a fixed leading instruction.
 
 ## Usage accounting
 

@@ -2159,9 +2159,7 @@ class TestSummarizingCompactionModel:
 
     @pytest.mark.anyio
     async def test_instructions_override_reaches_the_summarizer_agent(self):
-        # The motivating case: Claude Code OAuth endpoints require requests to open with a fixed
-        # instruction string, so the summarizer's system prompt must be configurable (#668).
-        required = "You are Claude Code, Anthropic's official CLI for Claude."
+        required = 'Required endpoint instruction.'
         comp = SummarizingCompaction(
             max_messages=3,
             keep_messages=1,

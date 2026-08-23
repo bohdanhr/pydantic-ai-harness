@@ -316,12 +316,12 @@ class SummarizingCompaction(AbstractCapability[AgentDepsT]):
     Must contain a ``{messages}`` placeholder.
     """
 
-    instructions: str = _DEFAULT_INSTRUCTIONS
+    instructions: str = field(default=_DEFAULT_INSTRUCTIONS, kw_only=True)
     """Instructions for the internal agent that writes the summary.
 
-    `summary_prompt` shapes the user turn of the summary request; this shapes its system
-    prompt. Override it when the summarizer endpoint constrains the system prompt, e.g.
-    Claude Code OAuth endpoints require requests to open with a fixed instruction string.
+    `summary_prompt` shapes the user turn of the summary request; this sets the internal
+    agent's static instructions, which Pydantic AI sends in the request's system prompt.
+    Override it when the summarizer endpoint requires a fixed leading instruction.
     """
 
     tokenizer: Callable[[str], int] | None = None
