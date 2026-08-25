@@ -890,7 +890,10 @@ class CodeModeToolset(WrapperToolset[AgentDepsT]):
             )
 
             # Serialize to JSON-compatible form so Monty receives only plain data.
-            return _jsonable_for_sandbox(_TOOL_RETURN_CONTENT_TA.dump_python(result))
+            # `ToolReturnContent` ends in `Any`, so every tool result is legal here, but its
+            # `Mapping[str, Any]` member still warns on a dict with non-str keys. Those keys
+            # are stringified below, so the warning has nothing left to report.
+            return _jsonable_for_sandbox(_TOOL_RETURN_CONTENT_TA.dump_python(result, warnings=False))
 
         # Type-check only the first executed snippet. Monty's checker can reject valid later
         # snippets that reuse imports or pass a runtime-validated dict to a TypedDict parameter.
