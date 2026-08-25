@@ -319,6 +319,18 @@ _TOOL_RETURN_CONTENT_TA: TypeAdapter[Any] = TypeAdapter(ToolReturnContent)
 _SANDBOX_NATIVE_SCALARS = (str, bytes, bytearray, bool, int, float, type(None))
 
 
+def _jsonable_key(key: Any) -> Any:
+    """Render one mapping key the way `to_jsonable_python` renders JSON object keys.
+
+    JSON object keys are always strings, so `_build_type_check_stubs` declares every
+    mapping as `dict[str, ...]` whatever the Python key type is. Left alone, a `Decimal`
+    key is rejected by Monty and an `int` key silently contradicts that stub, so a
+    snippet indexing with the declared `str` raises `KeyError` at runtime.
+    """
+    (jsonable_key,) = to_jsonable_python({key: None})
+    return jsonable_key
+
+
 def _jsonable_for_sandbox(value: Any) -> Any:
     """Render the leaves Monty cannot hold as the JSON values the stubs describe.
 
@@ -327,11 +339,15 @@ def _jsonable_for_sandbox(value: Any) -> Any:
     keeps the original objects instead: Monty rejects `Decimal` and `UUID` outright,
     and a `datetime` arrives where the stub promised a `str`, so the type check passes
     and the snippet fails at runtime.
+
+    `bytes` and `bytearray` are the deliberate exception: they cross as themselves
+    rather than as the `str` their stub declares, because Monty carries binary natively
+    and encoding it would change what every binary payload looks like inside the sandbox.
     """
     if isinstance(value, _SANDBOX_NATIVE_SCALARS):
         return value
     if isinstance(value, Mapping):
-        return {key: _jsonable_for_sandbox(item) for key, item in value.items()}  # pyright: ignore[reportUnknownVariableType]
+        return {_jsonable_key(key): _jsonable_for_sandbox(item) for key, item in value.items()}  # pyright: ignore[reportUnknownVariableType]
     if isinstance(value, (list, tuple)):
         return [_jsonable_for_sandbox(item) for item in value]  # pyright: ignore[reportUnknownVariableType]
     return to_jsonable_python(value)

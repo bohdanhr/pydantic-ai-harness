@@ -163,6 +163,16 @@ def get_receipt() -> Receipt:
     )
 
 
+def get_prices() -> dict[Decimal, str]:
+    """Fetch prices by amount."""
+    return {Decimal('1.50'): 'USD'}
+
+
+def get_labels() -> dict[int, str]:
+    """Fetch labels by id."""
+    return {1: 'one'}
+
+
 # Hand-built `ToolDefinition` objects + a tiny stub toolset are used by
 # `test_conflicting_typed_dicts_get_tool_name_prefix` to exercise the
 # `needs_prefix=True` rendering path. Going through Pydantic's JSON schema generator
@@ -391,6 +401,36 @@ class TestCodeMode:
 
         # The un-dumped result is still what the message history records.
         assert result.metadata['tool_returns']['pyd_ai_code_mode__1'].content == get_receipt()
+
+    async def test_mapping_keys_cross_as_the_strings_the_stub_declares(self) -> None:
+        """A `Decimal` key reaches the sandbox as `'1.50'`, not as a `Decimal`.
+
+        JSON object keys are always strings, so the stub declares `dict[str, str]`
+        whatever the Python key type is. Leaving the key alone hit the same two
+        failures as the values: Monty rejects a `Decimal` key outright.
+        """
+        wrapper = CodeMode[object]().get_wrapper_toolset(_build_function_toolset(get_prices))
+        assert isinstance(wrapper, CodeModeToolset)
+        ctx = await build_ctx(None, wrapper)
+        tools = await wrapper.get_tools(ctx)
+        code = "p = await get_prices()\np['1.50']"
+        result = await wrapper.call_tool('run_code', {'code': code}, ctx, tools['run_code'])
+        assert result.return_value == 'USD'
+
+    async def test_int_mapping_keys_cross_as_the_strings_the_stub_declares(self) -> None:
+        """An `int` key reaches the sandbox as `'1'`, so indexing with the declared `str` works.
+
+        This is the silent half: the stub declares `dict[str, str]`, so a snippet
+        indexing with a `str` type-checked and then raised `KeyError` against the
+        `int` key that actually arrived.
+        """
+        wrapper = CodeMode[object]().get_wrapper_toolset(_build_function_toolset(get_labels))
+        assert isinstance(wrapper, CodeModeToolset)
+        ctx = await build_ctx(None, wrapper)
+        tools = await wrapper.get_tools(ctx)
+        code = "labels = await get_labels()\n[labels['1'], list(labels.keys())]"
+        result = await wrapper.call_tool('run_code', {'code': code}, ctx, tools['run_code'])
+        assert result.return_value == ['one', ['1']]
 
     async def test_run_code_can_chain_multiple_tool_calls_in_one_snippet(self) -> None:
         """A realistic LLM snippet that calls two tools in one `run_code` invocation."""
