@@ -315,8 +315,9 @@ _RUN_CODE_ARGS_VALIDATOR: SchemaValidatorProt = _RUN_CODE_ADAPTER.validator  # p
 _TOOL_RETURN_CONTENT_TA: TypeAdapter[Any] = TypeAdapter(ToolReturnContent)
 
 # Values Monty holds as-is. `bytes` is here because Monty carries binary payloads
-# natively and JSON would utf-8 decode them, which arbitrary bytes fail.
-_SANDBOX_NATIVE_SCALARS = (str, bytes, bytearray, bool, int, float, type(None))
+# natively and JSON would utf-8 decode them, which arbitrary bytes fail. `Ellipsis`
+# is here because Monty holds it and JSON has no form for it at all.
+_SANDBOX_NATIVE_SCALARS = (str, bytes, bytearray, bool, int, float, type(None), type(Ellipsis))
 
 
 def _jsonable_key(key: Any) -> Any:
@@ -347,8 +348,18 @@ def _jsonable_for_sandbox(value: Any) -> Any:
     if isinstance(value, _SANDBOX_NATIVE_SCALARS):
         return value
     if isinstance(value, Mapping):
-        return {_jsonable_key(key): _jsonable_for_sandbox(item) for key, item in value.items()}  # pyright: ignore[reportUnknownVariableType]
-    if isinstance(value, (list, tuple)):
+        jsonable: dict[Any, Any] = {}
+        for key, item in value.items():  # pyright: ignore[reportUnknownVariableType]
+            jsonable_key = _jsonable_key(key)
+            if jsonable_key in jsonable:
+                raise UserError(
+                    f'A tool returned a mapping where key {key!r} renders as the JSON key '
+                    f'{jsonable_key!r}, which an earlier key already produced. The sandbox holds '
+                    'one entry per JSON key, so one of the two values would be dropped.'
+                )
+            jsonable[jsonable_key] = _jsonable_for_sandbox(item)
+        return jsonable
+    if isinstance(value, (list, tuple, set, frozenset)):
         return [_jsonable_for_sandbox(item) for item in value]  # pyright: ignore[reportUnknownVariableType]
     return to_jsonable_python(value)
 
